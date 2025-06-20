@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require "anchor_migrations"
+require "anchor_migrations/cli"
+
+AnchorMigrations::CLI.start(ARGV)
