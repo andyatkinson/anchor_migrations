@@ -10,18 +10,20 @@ module AnchorMigrations
       command = args.shift
 
       case command
+      when "help"
+        new.help
       when "init"
         new.init
       when "generate"
         new.generate
       when "lint"
         new.lint
-      when "migrate"
-        new.migrate
       when "backfill"
         new.generate_rails_migration
+      when "migrate"
+        new.migrate
       else
-        puts "Unknown command. Available commands: init, generate, lint, backfill"
+        new.help
       end
     end
 
@@ -97,6 +99,10 @@ module AnchorMigrations
 
     def generate_rails_migration
       RailsMigrationGenerator.new.generate
+    end
+
+    def help
+      puts "Available commands: init, generate, lint, backfill, migrate"
     end
   end
 end

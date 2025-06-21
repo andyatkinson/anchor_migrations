@@ -8,8 +8,8 @@ Anchor migrations support a restricted set of DDL operations by design. They mus
 anchor init         # initialize directories
 anchor generate     # generate an empty versioned .sql file, to be filled in
 anchor lint         # safety-lint all .sql files using Squawk
-anchor migrate      # Run the latest Anchor Migration
 anchor backfill     # Backfill a Rails migration from the SQL
+anchor migrate      # Run the Anchor Migration DDL
 ```
 
 ## Installation
@@ -73,3 +73,14 @@ Anchor Migrations are only additive, not destructive. They should not be used fo
 1. Add indexes without using concurrently
 
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
+
+## Building
+```sh
+gem build anchor_migrations.gemspec
+gem install ./anchor_migrations-0.1.0.gem
+```
+
+## Testing
+```sh
+anchor help
+```
