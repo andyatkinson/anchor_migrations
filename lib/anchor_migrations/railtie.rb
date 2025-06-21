@@ -1,8 +1,10 @@
-require 'rails/railtie'
+# frozen_string_literal: true
+
+require "rails/railtie"
 
 module AnchorMigrations
   class Railtie < Rails::Railtie
-    initializer 'anchor_migrations.configure_rails_initialization' do
+    initializer "anchor_migrations.configure_rails_initialization" do
       puts "AnchorMigrations Railtie initialized!"
       rails_version_major = Rails::VERSION::MAJOR
       rails_version_minor = Rails::VERSION::MINOR
@@ -13,4 +15,3 @@ module AnchorMigrations
     end
   end
 end
-

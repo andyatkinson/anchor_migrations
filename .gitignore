@@ -6,5 +6,6 @@
 /pkg/
 /spec/reports/
 /tmp/
-anchor_migrations/sql
+anchor_migrations/
 *.gem
+db/
