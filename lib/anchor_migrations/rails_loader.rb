@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module AnchorMigrations
+  # Load the Rails environment
   module RailsLoader
     def self.load_rails!
       return if defined?(Rails) && Rails.application

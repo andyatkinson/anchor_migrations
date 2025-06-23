@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module AnchorMigrations
+  # Create a Rails migration from Anchor Migration SQL
   class RailsMigrationGenerator
     def initialize
       @migration_file_suffix = nil
@@ -32,7 +33,7 @@ module AnchorMigrations
       File.join(subdirs)
     end
 
-    def get_rails_version
+    def rails_version_major_minor
       AnchorMigrations::RailsLoader.load_rails!
 
       if defined?(Rails) && defined?(Rails::VERSION)
@@ -46,13 +47,14 @@ module AnchorMigrations
 
     # Try and deduce the operation type
     # TODO add more operation types
+    # NOTE: Using named capture groups
     def parse_sql_ddl
       # Case-insensitive regex with optional keywords
-      if @sql_ddl =~ /(?<ddl>create\s+index       # "CREATE INDEX"
+      if @sql_ddl =~ /(?<ddl>create\s+index # "CREATE INDEX"
         |drop\s+index)                      # "DROP INDEX"
         \s+concurrently                     # required "concurrently"
-        \s+(if\s+not\s+exists|if\s+exists)  # "if not exists" or "if exists"
-        \s+(?<idx>\w+)                            # index name (non-whitespace)
+        \s+if\s+not\s+exists|if\s+exists    # "if not exists" or "if exists"
+        \s+(?<idx>\w+)                      # index name (non-whitespace)
       /xi
         @index_name = Regexp.last_match(:idx)
         index_name_mig_name = @index_name.split("_").map(&:capitalize).join
@@ -75,7 +77,7 @@ module AnchorMigrations
         # File: #{@anchor_migration_file}
         # ################################################
         #
-        class #{@migration_name} < ActiveRecord::Migration[#{get_rails_version}]
+        class #{@migration_name} < ActiveRecord::Migration[#{rails_version_major_minor}]
           disable_ddl_transaction!
 
           def change

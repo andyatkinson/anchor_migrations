@@ -5,6 +5,7 @@ require "uri"
 require "open3"
 
 module AnchorMigrations
+  # Process command line arguments
   class CLI
     def self.start(args)
       command = args.shift

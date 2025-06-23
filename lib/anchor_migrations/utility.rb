@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module AnchorMigrations
+  # Utility functions
   module Utility
     # Strip out SQL comments that start with
     # double hyphen "--"

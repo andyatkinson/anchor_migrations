@@ -3,6 +3,7 @@
 require "rails/railtie"
 
 module AnchorMigrations
+  # Rails integration
   class Railtie < Rails::Railtie
     initializer "anchor_migrations.configure_rails_initialization" do
       puts "AnchorMigrations Railtie initialized!"
