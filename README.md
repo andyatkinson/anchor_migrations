@@ -84,9 +84,10 @@ They should not be used for:
 ```sh
 gem build anchor_migrations.gemspec
 gem install ./anchor_migrations-0.1.0.gem
+anchor help
 ```
 
-## Testing
+## Testing in Rails
 ```sh
-anchor help
+bundle exec anchor help
 ```
