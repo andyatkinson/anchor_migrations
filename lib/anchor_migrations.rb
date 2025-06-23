@@ -23,8 +23,8 @@ module AnchorMigrations
       yield(configuration)
     end
 
-     def reset
-       @configuration = Configuration.new
-     end
+    def reset
+      @configuration = Configuration.new
+    end
   end
 end

@@ -15,7 +15,7 @@ module AnchorMigrations
       parse_sql_ddl
     end
 
-    # TODO handle missing migrations dir
+    # TODO: handle missing migrations dir
     # handle missing migration file
     def generate(write_file: true)
       # TODO: add more operation types
@@ -58,7 +58,7 @@ module AnchorMigrations
     def parse_sql_ddl
       # Replace inner \n with empty space
       # Strip trailing \n
-      @sql_ddl = @sql_ddl.gsub("\n",' ').strip
+      @sql_ddl = @sql_ddl.gsub("\n", " ").strip
       # Case-insensitive regex with optional keywords
 
       if @sql_ddl =~ /(?<ddl>create\s+index # "CREATE INDEX"
