@@ -15,6 +15,8 @@ module AnchorMigrations
       parse_sql_ddl
     end
 
+    # TODO handle missing migrations dir
+    # handle missing migration file
     def generate(write_file: true)
       # TODO: add more operation types
       # - create index
@@ -25,6 +27,8 @@ module AnchorMigrations
       migration_content = rails_generate_migration_code
       if write_file
         File.write(output_file, migration_content)
+        puts "Wrote file: #{output_file}"
+        puts File.read(output_file)
       end
       migration_content
     end
@@ -60,14 +64,14 @@ module AnchorMigrations
       if @sql_ddl =~ /(?<ddl>create\s+index # "CREATE INDEX"
         |drop\s+index)                      # "DROP INDEX"
         \s+concurrently                     # required "concurrently"
-        \s+(if\s+not\s+exists|if\s+exists)    # "if not exists" or "if exists"
+        \s+(if\s+not\s+exists|if\s+exists)  # "if not exists" or "if exists"
         \s+(?<idx>\w+)                      # index name (non-whitespace)
       /xi
         @index_name = Regexp.last_match(:idx)
         index_name_mig_name = @index_name.split("_").map(&:capitalize).join
         ddl_type = Regexp.last_match(:ddl)
         ddl_type_mig_name = ddl_type.split.map(&:capitalize).join
-        ddl_type_file_name = ddl_type.split.join("_")
+        ddl_type_file_name = ddl_type.split.map(&:downcase).join("_")
         @migration_file_suffix = "#{ddl_type_file_name}_#{@index_name}"
         @migration_name = "#{ddl_type_mig_name}#{index_name_mig_name}"
       end
