@@ -80,6 +80,15 @@ module AnchorMigrations
     # Assume it's a concurrently operation for now, disable_ddl_transaction!
     # TODO: support strong_migrations
     def rails_generate_migration_code
+      sql_ddl = @sql_ddl
+      if AnchorMigrations.configuration.use_strong_migrations
+        sql_ddl = <<-WITH_SM
+        safety_assured do
+          #{sql_ddl}
+        end
+        WITH_SM
+      end
+
       <<~MIG_TEMPLATE.strip
         #
         # ################################################
@@ -93,7 +102,7 @@ module AnchorMigrations
 
           def change
             execute <<-SQL
-              #{@sql_ddl}
+              #{sql_ddl}
             SQL
           end
         end
