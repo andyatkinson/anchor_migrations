@@ -34,7 +34,7 @@ When Anchor Migration SQL is ready to apply, a psql client connection is used fo
 ## What problems do Anchor migrations solve?
 1. Anchor Migrations are an additional mechanism to release safe DDL changes that don’t have code dependencies, while keeping all databases in sync using ORM migrations.
 
-Anchor Migrations are a process for organizations not using trunk-based development (TBD) or infrequent releases, to allow safe DDL to get released more regularly.
+Anchor Migrations are a process for organizations not using [Trunk Based Development](https://trunkbaseddevelopment.com) (TBD) or infrequent releases, to allow safe DDL to get released more regularly.
 
 Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, there’s no loss of fidelity in the normal ORM migration process. 
 
