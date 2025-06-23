@@ -57,7 +57,7 @@ module AnchorMigrations
     def lint
       # TODO: return unless there's a directory ./anchor_migrations
       unless system("which squawk > /dev/null 2>&1")
-        abort "Error: 'squawk' command not found in PATH. Installation instructions: <install.txt>."
+        abort "Error: 'squawk' command not found in PATH."
       end
       system("squawk lint anchor_migrations/*.sql")
     end

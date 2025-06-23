@@ -1,7 +1,7 @@
 # ⚓ Anchor Migrations
 Anchor Migrations are SQL migrations with various restrictions, intended to be applied before ORM migrations, for a couple of specific use cases.
 
-Anchor migrations support a restricted set of DDL operations by design. They must be additive, not destructive, and they must be idempotent, meaning they can be applied repeatedly but are applied exactly once when they don’t already exist. 
+Anchor migrations support a restricted set of DDL operations by design. They must be non-blocking, idempotent, meaning they can be applied repeatedly but are applied exactly once when they don’t already exist.
 
 ## Commands
 ```sh
@@ -60,13 +60,22 @@ On large tables, creating indexes concurrently can take a long time. It's nice t
 Anchor migrations in SQL must be written using idempotent operations. This allows the SQL to be the backfill source for an Active Record migration which is then idempotent as well.
 
 ### Restriced DDL: What DDL is supported for Anchor Migrations?
-Only additive, non-destructive, non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types can be added in the future
-1. `CREATE INDEX IF NOT EXISTS`
+Only non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types can be added in the future
+1. `CREATE INDEX CONCURRENTLY IF NOT EXISTS`
+1. `DROP INDEX CONCURRENTLY IF EXISTS` (Postgres 13+)
+
+Roadmap:
+1. `ALTER TABLE ALTER COLUMN IF NOT EXISTS` (only `NULL` values)
+1. Add check constraint, initially not valid
 
 ### What’s out of scope for Anchor Migrations?
-Anchor Migrations are only additive, not destructive. They should not be used for:
+Anchor Migrations are non-blocking and idempotent.
+
+For destructive operations, Anchor Migrations should be limited to DDL that no application
+code depends on. That's because application code references need to be removed first.
+
+They should not be used for:
 1. `DROP TABLE`
-1. `ALTER TABLE ALTER COLUMN`
 1. Adding non-nullable column, or a column with a default value
 1. Dropping constraints
 1. Adding initially valid constraints

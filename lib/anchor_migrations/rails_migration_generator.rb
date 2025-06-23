@@ -4,8 +4,7 @@ module AnchorMigrations
   class RailsMigrationGenerator
     def initialize
       @migration_file_suffix = nil
-      # TODO: only supports one migration at a time
-      # TODO check that there aren't more than one unapplied migration
+      # TODO: only supports one migration file at a time
       @anchor_migration_file = Dir["anchor_migrations/*.sql"].max
       @migration_version = File.basename(@anchor_migration_file).split("_").first
       sql_ddl = File.read(@anchor_migration_file)
@@ -16,7 +15,9 @@ module AnchorMigrations
 
     def generate
       # TODO: add more operation types
-      return unless @sql_ddl =~ /create index/i
+      # - create index
+      # - drop index
+      return unless @sql_ddl =~ /create index|drop index/i
 
       output_file = "#{migrations_dir}/#{@migration_version}_#{@migration_file_suffix}.rb"
       File.write(output_file, rails_generate_migration_code)
@@ -44,19 +45,22 @@ module AnchorMigrations
     end
 
     # Try and deduce the operation type
-    # TODO add more operation types, only supporting CREATE INDEX for now
+    # TODO add more operation types
     def parse_sql_ddl
       # Case-insensitive regex with optional keywords
-      if @sql_ddl =~ /create\s+index          # "create index" keywords
-        \s+concurrently         # required "concurrently"
-        \s+if\s+not\s+exists    # required "if not exists"
-        \s+(\S+)                # capture index name (non-whitespace)
-        \s+on\s+                # "on" keyword
+      if @sql_ddl =~ /(?<ddl>create\s+index       # "CREATE INDEX"
+        |drop\s+index)                      # "DROP INDEX"
+        \s+concurrently                     # required "concurrently"
+        \s+(if\s+not\s+exists|if\s+exists)  # "if not exists" or "if exists"
+        \s+(?<idx>\w+)                            # index name (non-whitespace)
       /xi
-        @index_name = ::Regexp.last_match(1)
-        migration_name_from_index = @index_name.split("_").map(&:capitalize).join
-        @migration_file_suffix = "create_index_#{@index_name}"
-        @migration_name = "CreateIndex#{migration_name_from_index}"
+        @index_name = Regexp.last_match(:idx)
+        index_name_mig_name = @index_name.split("_").map(&:capitalize).join
+        ddl_type = Regexp.last_match(:ddl)
+        ddl_type_mig_name = ddl_type.split.map(&:capitalize).join
+        ddl_type_file_name = ddl_type.split.join("_")
+        @migration_file_suffix = "#{ddl_type_file_name}_#{@index_name}"
+        @migration_name = "#{ddl_type_mig_name}#{index_name_mig_name}"
       end
     end
 

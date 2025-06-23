@@ -25,8 +25,8 @@ module AnchorMigrations
         -- CREATE INDEX CONCURRENTLY IF NOT EXISTS
         -- idx_tbl_col ON tbl (col);
         --
-        -- ALTER TABLE tbl
-        -- ADD COLUMN IF NOT EXISTS col TEXT;
+        -- DROP INDEX CONCURRENTLY IF EXISTS
+        -- idx_tbl_col;
       SQL_TEMPLATE
     end
   end
