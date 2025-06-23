@@ -90,7 +90,6 @@ module AnchorMigrations
         if status.success?
           puts "Success!"
           puts "Applied Version: #{version}"
-          puts "Run 'anchor backfill' to generate backfill Rails migration"
         end
         puts "Exit code: #{status.exitstatus}"
       end
