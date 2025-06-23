@@ -23,7 +23,5 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true
-    - name: Stop RuboCop Server
-      run: bundle exec rubocop --stop-server
     - name: Run the default task
       run: bundle exec rake
