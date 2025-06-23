@@ -3,10 +3,11 @@
 module AnchorMigrations
   # Create a Rails migration from Anchor Migration SQL
   class RailsMigrationGenerator
-    def initialize
+    def initialize(migrations_dir: "anchor_migrations")
+      @migrations_dir = migrations_dir
       @migration_file_suffix = nil
       # TODO: only supports one migration file at a time
-      @anchor_migration_file = Dir["anchor_migrations/*.sql"].max
+      @anchor_migration_file = Dir["#{@migrations_dir}/*.sql"].max
       @migration_version = File.basename(@anchor_migration_file).split("_").first
       sql_ddl = File.read(@anchor_migration_file)
       cleaned_sql = AnchorMigrations::Utility.cleaned_sql(sql_ddl)
@@ -14,16 +15,18 @@ module AnchorMigrations
       parse_sql_ddl
     end
 
-    def generate
+    def generate(write_file: true)
       # TODO: add more operation types
       # - create index
       # - drop index
       return unless @sql_ddl =~ /create index|drop index/i
 
       output_file = "#{migrations_dir}/#{@migration_version}_#{@migration_file_suffix}.rb"
-      File.write(output_file, rails_generate_migration_code)
-      puts "Wrote file: #{output_file}"
-      puts File.read(output_file)
+      migration_content = rails_generate_migration_code
+      if write_file
+        File.write(output_file, migration_content)
+      end
+      migration_content
     end
 
     private
@@ -49,11 +52,15 @@ module AnchorMigrations
     # TODO add more operation types
     # NOTE: Using named capture groups
     def parse_sql_ddl
+      # Replace inner \n with empty space
+      # Strip trailing \n
+      @sql_ddl = @sql_ddl.gsub("\n",' ').strip
       # Case-insensitive regex with optional keywords
+
       if @sql_ddl =~ /(?<ddl>create\s+index # "CREATE INDEX"
         |drop\s+index)                      # "DROP INDEX"
         \s+concurrently                     # required "concurrently"
-        \s+if\s+not\s+exists|if\s+exists    # "if not exists" or "if exists"
+        \s+(if\s+not\s+exists|if\s+exists)    # "if not exists" or "if exists"
         \s+(?<idx>\w+)                      # index name (non-whitespace)
       /xi
         @index_name = Regexp.last_match(:idx)
