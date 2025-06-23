@@ -56,6 +56,8 @@ Found 0 issues in 1 file 🎉
 ## Example ORM (Active Record) Migration
 This Rails migration was generated from the SQL above.
 
+This example was generated after enabling Strong Migrations, a configuration option.
+
 ```rb
 #
 # ################################################
@@ -74,6 +76,17 @@ class CreateIndexIdxTripsCreatedAt < ActiveRecord::Migration[7.2]
       SQL
     end
   end
+end
+```
+
+## Configuration
+Currently, limited configuration is supported.
+
+Anchor Migrations can generate Strong Migrations compatible Active Record, by adding this block:
+```rb
+# config/initializers/anchor_migrations.rb
+AnchorMigrations.configure do |config|
+  config.use_strong_migrations = true
 end
 ```
 
