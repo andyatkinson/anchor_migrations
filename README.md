@@ -116,31 +116,38 @@ The idempotent Rails migration applies anywhere in lower environments, and does 
 
 ## Why Use Anchor Migrations?
 ### Query support, data integrity, data quality
-Indexes (and eventually constraints) that support query performance or data integrity, but has no code dependencies. These improve performance and data quality, and arguably shouldn’t be “blocked” by ORM migrations being released.
+Indexes (and eventually constraints) that support query performance or data integrity, but have no code dependencies, can be changed at a faster cadence, while keeping everything consistent.
+
+Indexes and constraints improve performance and data quality, and arguably shouldn’t be "blocked" by needing to wait for ORM migrations.
 
 ### Long running DDL changes
-On large tables, creating indexes concurrently can take a long time. It's nice to perform that during a low activity period, which is often not at the same time as code releases.
+On large tables, creating indexes concurrently can take a long time. It's nice to perform that during a low activity period, requiring control over the timing, which isn't always possible with ORM migrations.
 
 ## Anchor Migrations Properties
 ### Idempotent
-Anchor migrations in SQL must be written using idempotent operations. This allows the SQL to be the backfill source for an Active Record migration which is then idempotent.
+Anchor Migrations in SQL must be written using idempotent tactics like `IF NOT EXISTS`.
+
+This allows the SQL to be the backfill source for an Active Record migration, which is then also idempotent.
 
 ### Restricted DDL: What DDL is supported for Anchor Migrations?
-Only non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types can be added in the future
+Only non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types may be added in the future:
 1. `CREATE INDEX CONCURRENTLY IF NOT EXISTS`
 1. `DROP INDEX CONCURRENTLY IF EXISTS` (Postgres 13+)
 
-Roadmap:
+Roadmap operations, future gem releases:
 1. `ALTER TABLE ALTER COLUMN IF NOT EXISTS` (only `NULL` values)
 1. Add check constraint, initially not valid
 
 ### What’s out of scope for Anchor Migrations?
 Anchor Migrations are non-blocking and idempotent.
 
-For destructive operations, Anchor Migrations should be limited to DDL that no application
-code depends on. That's because application code references need to be removed first.
+For destructive operations like table drops, column drops, etc. with code dependencies, Anchor Migrations are not appropriate.
 
-They should not be used for:
+That's because application code references need to be removed first.
+
+Use Strong Migrations or similar to help guide that process.
+
+Some of those operations are:
 1. `DROP TABLE`
 1. Adding non-nullable column, or a column with a default value
 1. Dropping constraints
