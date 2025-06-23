@@ -1,7 +1,5 @@
 # ⚓ Anchor Migrations
-Anchor Migrations are SQL migrations with various restrictions, intended to be applied before ORM migrations, for a couple of specific use cases.
-
-Anchor migrations support a restricted set of DDL operations by design. They must be non-blocking, idempotent, meaning they can be applied repeatedly but are applied exactly once when they don’t already exist.
+Anchor Migrations are SQL DDL, non-blocking, idempotent, and augment the normal ORM migrations process.
 
 ## Commands
 ```sh
@@ -22,44 +20,43 @@ end
 Then run `bundle install`.
 
 ## Preconditions
-Anchor Migrations is very restricted now and expects a few things:
-- `DATABASE_URL` environment variable to be set
-- `psql` client to be reachable, it's used to apply SQL DDL
-- [Squawk](https://squawkhq.com) to be reachable and ready to use
+Anchor Migrations are restricted and opinionated for now, expecting a few things:
+- Postgres only, 13+
+- `DATABASE_URL` environment variable is set to the database to migrate (e.g. production), and is reachable, in order to apply migrations
+- The `psql` client can be reached by the gem
+- The [Squawk](https://squawkhq.com) executable is installed and reachable for use
 
-## Safety linting
-Squawk can be used as a linter on SQL migrations, to check for unsafe operations. For example, creating an index without using CONCURRENTLY. Squawk catches this. The developer should install Squash and use the “lint” command when preparing their SQL DDL.
+## Safety linting and lock_timeout
+Squawk is used on SQL migrations to check for unsafe operations. For example, creating an index or dropping an index without using CONCURRENTLY is detected by Squak. Anchor Migrations will require safety-linted SQL, although right now it’s up to the developer to run `anchor lint` in their workflow.
 
-Anchor Migrations are applied using a psql client connection. By default a 2 second `lock_timeout`[^docs] is set.
+When Anchor Migration SQL is ready to apply, a psql client connection is used for that. By default a 2 second `lock_timeout`[^docs] is set.
 
 ## What problems do Anchor migrations solve?
-1. Anchor Migrations are an additional release process for organizations that release their code and ORM migrations infrequently. Anchor migrations add another option.
-1. Anchor Migrations can be used for purposefully out-of-band migrations, like adding indexes concurrently on huge tables, that aren’t ideal to perform using the traditional ORM migrations release process.
+1. Anchor Migrations are an additional mechanism to release safe DDL changes that don’t have code dependencies, while keeping all databases in sync using ORM migrations.
 
-Anchor Migrations aren’t meant to replace ORM migrations, but to help fill in a couple of gaps to keep an organization moving. Despite the additional velocity, the SQL DDL can still be checked for safety. Because Anchor Migrations generates an ORM migration, there’s no loss of fidelity in the normal process. 
+Anchor Migrations are a process for organizations not using trunk-based development (TBD) or infrequent releases, to allow safe DDL to get released more regularly.
+
+Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, there’s no loss of fidelity in the normal ORM migration process. 
 
 ## Preparing a PR
 For a PR, prepare:
-1. The Anchor Migration SQL file that’s been linted. Don’t apply it yet until it’s been reviewed.
-1. The backfilled, generated Rails Migration. Run “db:migrate” like normal to apply it. The developer submits the migration file and the diff to either db/structure.sql or db/schema.rb like they normally would.
+1. The Anchor Migration SQL file. This was linted by the developer using Squawk and iterated on until it was safe.
+1. The backfilled, generated Rails Migration. Run “db:migrate” like normal to apply it. The developer submits the migration file and the diff to db/structure.sql or db/schema.rb like they normally would.
 
-Once the PR is approved, the developer can run `anchor migrate` to apply the DDL.
+Once the PR is approved containing these files, the developer can run `anchor migrate` to apply the DDL. The applied migration can be recorded, and the PR merged. The idempotent Rails migration applies anywhere in lower environments, and does not apply when it reaches production, where the Anchor Migration already applied the equivalent SQL DDL.
 
 ## Why Use Anchor Migrations?
-### Structural dependencies
-Structural elements like tables or columns, that must be in place before code is released that depends on it, where it might be more convenient or helpful to perform these out of band, while still keeping all databases in sync.
-
 ### Query support, data integrity, data quality
-Indexes and constraints that support query performance or data integrity and data quality, that code doesn't depend on, but improve the system. Sometimes we want to apply new indexes as soon as we know they’re useful and needed to improve performance.
+Indexes (and eventually constraints) that support query performance or data integrity, but has no code dependencies. These improve performance and data quality, and arguably shouldn’t be “blocked” by ORM migrations being released.
 
 ### Long running DDL changes
 On large tables, creating indexes concurrently can take a long time. It's nice to perform that during a low activity period, which is often not at the same time as code releases.
 
 ## Anchor Migrations Properties
 ### Idempotent
-Anchor migrations in SQL must be written using idempotent operations. This allows the SQL to be the backfill source for an Active Record migration which is then idempotent as well.
+Anchor migrations in SQL must be written using idempotent operations. This allows the SQL to be the backfill source for an Active Record migration which is then idempotent.
 
-### Restriced DDL: What DDL is supported for Anchor Migrations?
+### Restricted DDL: What DDL is supported for Anchor Migrations?
 Only non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types can be added in the future
 1. `CREATE INDEX CONCURRENTLY IF NOT EXISTS`
 1. `DROP INDEX CONCURRENTLY IF EXISTS` (Postgres 13+)
