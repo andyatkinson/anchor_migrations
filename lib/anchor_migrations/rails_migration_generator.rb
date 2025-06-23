@@ -13,6 +13,7 @@ module AnchorMigrations
       cleaned_sql = AnchorMigrations::Utility.cleaned_sql(sql_ddl)
       @sql_ddl = cleaned_sql
       parse_sql_ddl
+      AnchorMigrations::RailsLoader.load_rails!
     end
 
     # TODO: handle missing migrations dir
@@ -41,8 +42,6 @@ module AnchorMigrations
     end
 
     def rails_version_major_minor
-      AnchorMigrations::RailsLoader.load_rails!
-
       if defined?(Rails) && defined?(Rails::VERSION)
         major = Rails::VERSION::MAJOR
         minor = Rails::VERSION::MINOR
@@ -77,18 +76,27 @@ module AnchorMigrations
       end
     end
 
+    def change_method_content
+      if AnchorMigrations.configuration.use_strong_migrations
+        <<-TEMPL
+        safety_assured do
+          execute <<-SQL
+            #{@sql_ddl}
+          SQL
+        end
+        TEMPL
+      else
+        <<-TEMPL
+        execute <<-SQL
+          #{@sql_ddl}
+        SQL
+        TEMPL
+      end
+    end
+
     # Assume it's a concurrently operation for now, disable_ddl_transaction!
     # TODO: support strong_migrations
     def rails_generate_migration_code
-      sql_ddl = @sql_ddl
-      if AnchorMigrations.configuration.use_strong_migrations
-        sql_ddl = <<-WITH_SM
-        safety_assured do
-          #{sql_ddl}
-        end
-        WITH_SM
-      end
-
       <<~MIG_TEMPLATE.strip
         #
         # ################################################
@@ -101,9 +109,7 @@ module AnchorMigrations
           disable_ddl_transaction!
 
           def change
-            execute <<-SQL
-              #{sql_ddl}
-            SQL
+            #{change_method_content}
           end
         end
       MIG_TEMPLATE
