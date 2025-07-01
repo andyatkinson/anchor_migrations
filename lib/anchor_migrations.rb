@@ -6,6 +6,7 @@ require_relative "anchor_migrations/utility"
 require_relative "anchor_migrations/version"
 require_relative "anchor_migrations/generator"
 require_relative "anchor_migrations/rails_migration_generator"
+require_relative "anchor_migrations/initializer_generator"
 require_relative "anchor_migrations/cli"
 require_relative "anchor_migrations/railtie" if defined?(Rails)
 

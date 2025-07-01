@@ -34,19 +34,21 @@ When Anchor Migration SQL is ready to apply, a psql client connection is used fo
 ## What problems do Anchor migrations solve?
 1. Anchor Migrations are an additional mechanism to release safe DDL changes that don’t have code dependencies, while keeping all databases in sync using ORM migrations.
 
-Anchor Migrations are a process for organizations not using [Trunk Based Development](https://trunkbaseddevelopment.com) (TBD) or infrequent releases, to allow safe DDL to get released more regularly.
+Anchor Migrations are a process for organizations not using [Trunk Based Development](https://trunkbaseddevelopment.com) (TBD) or frequent releases, to allow safe DDL to get released more frequently.
 
-Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, there’s no loss of fidelity in the normal ORM migration process. 
+Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, Rails migrations stay in sync.
 
 ## Example Anchor Migration SQL
-By default, Anchor Migrations are stored in `anchor_migrations` as `.sql` files:
+By default, Anchor Migrations are stored in `db/anchor_migrations` as `.sql` files:
 ```sql
 -- anchor_migrations/20250623173850_anchor_migration.sql
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
 idx_trips_created_at ON trips (created_at);
 ```
 
-Squawk runs on the file above for "safety linting":
+Squawk runs on the SQL file above for "safety linting", looking for unsafe patterns.
+
+Run it using anchor migrations with the `lint` command:
 ```sh
 ~/app ➜ bundle exec anchor lint
 
@@ -54,10 +56,9 @@ Found 0 issues in 1 file 🎉
 ```
 
 ## Example ORM (Active Record) Migration
-This Rails migration was generated from the SQL above.
+This Rails migration was generated from the Anchor Migration SQL file above.
 
-This example was generated after enabling Strong Migrations, a configuration option.
-
+For this example, Strong Migrations is used, so the `safety_assured` block it expects is added to the Rails migration.
 ```rb
 #
 # ################################################
@@ -82,7 +83,7 @@ end
 ## Configuration
 Currently, limited configuration is supported.
 
-Anchor Migrations can generate Strong Migrations compatible Active Record, by adding this block:
+Anchor Migrations supports generating Strong Migrations-compatible Active Record migrations:
 ```rb
 # config/initializers/anchor_migrations.rb
 AnchorMigrations.configure do |config|
@@ -90,16 +91,15 @@ AnchorMigrations.configure do |config|
 end
 ```
 
-## Preparing a PR
+## Example PR Workflow
 For a PR, add:
 1. The Anchor Migration SQL file.
-1. The normal Rails migration files: Run `db:migrate` like normal to apply it. The developer submits the migration file and the diff to `db/structure.sql` or `db/schema.rb` like they normally would.
+1. The normal Rails migration files: Run `db:migrate` like normal to apply the migration. The developer submits the migration file and the diff to `db/structure.sql` or `db/schema.rb` like they normally would.
+1. Get an "approval" describing your plans to run `bundle exec anchor migrate`. The approval can be a comment in the PR from a team member.
+1. With an approval, run `anchor migrate` and capture the output (see below). Once applied, move the SQL migration into `db/anchor_migrations/applied` and update your PR.
+1. Get PR approval and merge it in. The Rails migration "backfills" the DDL, applying it wherever it's needed.
 
-That's it. It's mainly one additional SQL file.
-
-Once the PR is approved containing these files, the developer can run `bundle exec anchor migrate` to apply the DDL. The applied migration can be recorded, and the PR merged.
-
-For example, capture the output of running `bundle exec anchor migrate`:
+Example output of `bundle exec anchor migrate`:
 ```
 Applying Version: 20250623173850
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
@@ -111,10 +111,9 @@ Success!
 Applied Version: 20250623173850
 Exit code: 0
 ```
+The idempotent Rails migration applies anywhere it's needed and the Rails app is deployed. Other developer databases, lower environments, CI, etc. When it reaches production, the Anchor Migration SQL DDL was already applied, so nothing happens. The Rails migration is idempotent.
 
-The idempotent Rails migration applies anywhere in lower environments, and does not apply when it reaches production, where the Anchor Migration already applied the equivalent SQL DDL.
-
-## Why Use Anchor Migrations?
+## Good uses of Anchor Migrations
 ### Query support, data integrity, data quality
 Indexes (and eventually constraints) that support query performance or data integrity, but have no code dependencies, can be changed at a faster cadence, while keeping everything consistent.
 
@@ -138,6 +137,9 @@ Roadmap operations, future gem releases:
 1. `ALTER TABLE ALTER COLUMN IF NOT EXISTS` (only `NULL` values)
 1. Add check constraint, initially not valid
 
+### Uses psql
+For now, Anchor Migrations assumes you're using psql to migrate, and that psql can connect to your target instance.
+
 ### What’s out of scope for Anchor Migrations?
 Anchor Migrations are non-blocking and idempotent.
 
@@ -145,9 +147,9 @@ For destructive operations like table drops, column drops, etc. with code depend
 
 That's because application code references need to be removed first.
 
-Use Strong Migrations or similar to help guide that process.
+Use Strong Migrations or similar to help guide that process, and use regular Rails migrations.
 
-Some of those operations are:
+Some of those destructive operations are:
 1. `DROP TABLE`
 1. Adding non-nullable column, or a column with a default value
 1. Dropping constraints
@@ -156,7 +158,7 @@ Some of those operations are:
 
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
 
-## Building
+## Building the gem
 ```sh
 gem build anchor_migrations.gemspec
 gem install ./anchor_migrations-0.1.0.gem
@@ -164,6 +166,7 @@ anchor help
 ```
 
 ## Testing in Rails
+Add to Gemfile, run `bundle`.
 ```sh
 bundle exec anchor help
 ```
