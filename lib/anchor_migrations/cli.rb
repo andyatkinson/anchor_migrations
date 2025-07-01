@@ -32,8 +32,10 @@ module AnchorMigrations
       puts "Initializing anchor migrations structure..."
 
       folders = [
-        "anchor_migrations",
-        "db/migrate" # for Rails
+        "db/anchor_migrations",
+        "db/anchor_migrations/applied",
+        "config/initializers",
+        "db/migrate"
       ]
 
       folders.each do |folder|
@@ -45,7 +47,11 @@ module AnchorMigrations
         end
       end
 
-      # TODO: check for squawk
+      puts "Checking for Squawk"
+      check_for_squawk
+
+      puts "Adding initializer"
+      InitializerGenerator.new.generate
 
       puts "Anchor migrations structure initialized."
     end
@@ -56,8 +62,10 @@ module AnchorMigrations
     end
 
     def lint
-      # TODO: return unless there's a directory ./anchor_migrations
-      abort "Error: 'squawk' command not found in PATH." unless system("which squawk > /dev/null 2>&1")
+      if !Dir.exist?("db/anchor_migrations")
+        abort "Error: 'db/anchor_migrations' not found. Did you run anchor init?"
+      end
+      check_for_squawk
       system("squawk lint anchor_migrations/*.sql")
     end
 
@@ -101,6 +109,16 @@ module AnchorMigrations
 
     def help
       puts "Available commands: init, generate, lint, backfill, migrate"
+    end
+
+    private
+
+    def check_for_squawk
+      if !system("which squawk > /dev/null 2>&1")
+        abort "Error: 'squawk' command not found in PATH."
+      else
+        puts "Squawk found."
+      end
     end
   end
 end

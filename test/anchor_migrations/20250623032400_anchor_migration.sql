@@ -1,0 +1,2 @@
+CREATE INDEX CONCURRENTLY IF NOT EXISTS
+idx_tbl_col ON tbl (col);
