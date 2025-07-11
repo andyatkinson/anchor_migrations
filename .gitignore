@@ -9,3 +9,4 @@
 *.gem
 db/
 config/initializers/
+.ruby-version
