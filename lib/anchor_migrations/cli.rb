@@ -32,8 +32,8 @@ module AnchorMigrations
       puts "Initializing anchor migrations structure..."
 
       folders = [
-        "db/anchor_migrations",
-        "db/anchor_migrations/applied",
+        "#{AnchorMigrations::DEFAULT_DIR}",
+        "#{AnchorMigrations::DEFAULT_DIR}/applied",
         "config/initializers",
         "db/migrate"
       ]
@@ -62,8 +62,8 @@ module AnchorMigrations
     end
 
     def lint
-      if !Dir.exist?("db/anchor_migrations")
-        abort "Error: 'db/anchor_migrations' not found. Did you run anchor init?"
+      if !Dir.exist?(AnchorMigrations::DEFAULT_DIR)
+        abort "Error: '#{AnchorMigrations::DEFAULT_DIR}' not found. Did you run anchor init?"
       end
       check_for_squawk
       system("squawk lint anchor_migrations/*.sql")

@@ -4,7 +4,7 @@ module AnchorMigrations
   # Generate Anchor Migrations SQL files
   class Generator
     def anchor_migrations_dir
-      File.join("anchor_migrations")
+      File.join(AnchorMigrations::DEFAULT_DIR)
     end
 
     def generate
