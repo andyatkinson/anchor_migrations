@@ -23,8 +23,8 @@ Then run `bundle install`.
 Anchor Migrations are restricted and opinionated for now, expecting a few things:
 - Postgres only, 13+
 - `DATABASE_URL` environment variable is set to the database to migrate (e.g. production), and is reachable, in order to apply migrations
-- The `psql` client can be reached by the gem
-- The [Squawk](https://squawkhq.com) executable is installed and reachable for use
+- `psql` client accessible in PATH
+- [Squawk](https://squawkhq.com) executable ([Quick Start documentation](https://squawkhq.com/docs/)) accessible in PATH
 
 ## Safety linting and lock_timeout
 Squawk is used on SQL migrations to check for unsafe operations. For example, creating an index or dropping an index without using CONCURRENTLY is detected by Squak. Anchor Migrations will require safety-linted SQL, although right now it’s up to the developer to run `anchor lint` in their workflow.

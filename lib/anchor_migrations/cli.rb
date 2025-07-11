@@ -32,7 +32,7 @@ module AnchorMigrations
       puts "Initializing anchor migrations structure..."
 
       folders = [
-        "#{AnchorMigrations::DEFAULT_DIR}",
+        AnchorMigrations::DEFAULT_DIR,
         "#{AnchorMigrations::DEFAULT_DIR}/applied",
         "config/initializers",
         "db/migrate"
@@ -66,11 +66,12 @@ module AnchorMigrations
         abort "Error: '#{AnchorMigrations::DEFAULT_DIR}' not found. Did you run anchor init?"
       end
       check_for_squawk
-      system("squawk lint anchor_migrations/*.sql")
+      system("squawk lint #{AnchorMigrations::DEFAULT_DIR}/*.sql")
     end
 
     def migrate
-      anchor_migration_file = Dir["anchor_migrations/*.sql"].max
+      # TODO: Only supporting one file for now. Expecting files to be moved into "applied" directory.
+      anchor_migration_file = Dir["#{AnchorMigrations::DEFAULT_DIR}/*.sql"].max
       version = File.basename(anchor_migration_file).split("_").first
       sql_ddl = File.read(anchor_migration_file)
       cleaned_sql = AnchorMigrations::Utility.cleaned_sql(sql_ddl)
@@ -115,7 +116,10 @@ module AnchorMigrations
 
     def check_for_squawk
       if !system("which squawk > /dev/null 2>&1")
-        abort "Error: 'squawk' command not found in PATH."
+        abort <<~MSG
+        "Error: 'squawk' command not found in PATH."
+        Is it installed? https://squawkhq.com/docs/
+        MSG
       else
         puts "Squawk found."
       end
