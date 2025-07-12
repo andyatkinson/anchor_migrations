@@ -42,16 +42,20 @@ Anchor Migrations are used to perform DDL without code dependencies, more freque
 ## Example Anchor Migration SQL
 Anchor Migrations are stored in `db/anchor_migrations` as `.sql` files. For example:
 ```sql
--- db/anchor_migrations/20250623173850_create_index_tbl_col.sql
+-- db/anchor_migrations/20250623173850_create_index_trips_created_at.sql
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
 idx_trips_created_at ON trips (created_at);
 ```
 
-Squawk runs on the SQL file above to perform "safety linting," looking for unsafe patterns.
+Although `anchor generate` will create a generic name, it's important to customize the file name since it will be used.
+
+Above, the timestamp portion `20250623173850` was left as-generated, but `create_index_trips_created_at` was used to reflect the DDL and add some info about what's changing.
+
+Squawk runs on SQL files in the directory to perform "safety linting," looking for unsafe patterns.
 
 Run it using the `lint` command:
 ```sh
-➜ bundle exec anchor lint
+➜ anchor lint
 
 Found 0 issues in 1 file 🎉
 ```
@@ -61,7 +65,9 @@ If Squawk finds issues, apply the fixes and run it again until there are none.
 ## Example Active Record ORM Migration
 This Rails migration was generated from the Anchor Migration SQL above.
 
-Strong Migrations is used, so the `safety_assured` block it expects is added to the Rails migration. This is a configurable option.
+Strong Migrations[^strong] is used in the parent Rails app, so the `safety_assured` block was added to the Rails migration `change` method.
+
+This is a configurable option.
 ```rb
 #
 # ################################################
@@ -149,6 +155,7 @@ Some of those destructive operations are:
 
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
 [^tbd]: <https://trunkbaseddevelopment.com>
+[^strong]: <https://github.com/ankane/strong_migrations>
 
 ## Testing Integration in Rails
 Add to the project's Gemfile, then run `bundle`.
