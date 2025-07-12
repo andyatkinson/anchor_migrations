@@ -159,17 +159,18 @@ Some of those destructive operations are:
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
 [^tbd]: <https://trunkbaseddevelopment.com>
 
-## Building and Testing
-```sh
-gem build anchor_migrations.gemspec
-gem install ./anchor_migrations-0.1.0.gem
-bundle exec rake test
-```
-
 ## Testing Integration in Rails
 Add to the project's Gemfile, then run `bundle`.
 
 Once installed, test that it works by running:
 ```sh
 bundle exec anchor help
+```
+
+## Building, Testing, Publishing
+```sh
+gem build anchor_migrations.gemspec
+gem install ./anchor_migrations-0.1.0.gem
+bundle exec rake test
+gem push anchor_migrations-0.1.0.gem
 ```
