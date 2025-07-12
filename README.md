@@ -34,14 +34,14 @@ When Anchor Migration SQL is ready to apply, a psql client connection is used fo
 ## What problems do Anchor migrations solve?
 1. Anchor Migrations are an additional mechanism to release safe DDL changes that don’t have code dependencies, while keeping all databases in sync using ORM migrations.
 
-Anchor Migrations are a process for organizations not using [Trunk Based Development](https://trunkbaseddevelopment.com) (TBD) or frequent releases, to allow safe DDL to get released more frequently.
+Anchor Migrations are a process for organizations not using Trunk Based Development[^tbd] or frequent releases, to allow safe DDL to get released more frequently.
 
 Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, Rails migrations stay in sync.
 
 ## Example Anchor Migration SQL
 By default, Anchor Migrations are stored in `db/anchor_migrations` as `.sql` files:
 ```sql
--- anchor_migrations/20250623173850_anchor_migration.sql
+-- anchor_migrations/20250623173850_create_index_tbl_col.sql
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
 idx_trips_created_at ON trips (created_at);
 ```
@@ -157,12 +157,13 @@ Some of those destructive operations are:
 1. Add indexes without using concurrently
 
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
+[^tbd]: <https://trunkbaseddevelopment.com>
 
 ## Building and Testing
 ```sh
 gem build anchor_migrations.gemspec
 gem install ./anchor_migrations-0.1.0.gem
-rake test
+bundle exec rake test
 ```
 
 ## Testing Integration in Rails

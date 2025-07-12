@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    anchor_migrations (0.1.4)
+    anchor_migrations (0.1.5)
 
 GEM
   remote: https://rubygems.org/
@@ -41,7 +41,7 @@ GEM
 
 PLATFORMS
   arm64-darwin-23
-  ruby
+  x86_64-linux
 
 DEPENDENCIES
   anchor_migrations!

@@ -1,45 +1,37 @@
 # frozen_string_literal: true
 
 module AnchorMigrations
+  #
   # Create a Rails migration from Anchor Migration SQL
+  # Expects Anchor Migrations to be in db/anchor_migrations
+  # Expects to generate Rails Migrations into db/migrate
+  # Expects to parse a Rails-style timestamp from beginning of Anchor Migrations file
+  #
   class RailsMigrationGenerator
-    def initialize(migrations_dir: "anchor_migrations")
-      @migrations_dir = migrations_dir
-      @migration_file_suffix = nil
-      # TODO: only supports one migration file at a time
-      @anchor_migration_file = Dir["#{@migrations_dir}/*.sql"].max
-      @migration_version = File.basename(@anchor_migration_file).split("_").first
-      sql_ddl = File.read(@anchor_migration_file)
-      cleaned_sql = AnchorMigrations::Utility.cleaned_sql(sql_ddl)
-      @sql_ddl = cleaned_sql
-      parse_sql_ddl
-      AnchorMigrations::RailsLoader.load_rails!
+    def initialize(anchor_migrations_dir: AnchorMigrations::DEFAULT_DIR)
+      if @anchor_migration_file = Dir["#{anchor_migrations_dir}/*.sql"].max
+        @migration_version = File.basename(@anchor_migration_file).split("_").first
+        sql_file_content = File.read(@anchor_migration_file)
+        @cleaned_sql_ddl = AnchorMigrations::Utility.cleaned_sql(sql_file_content)
+        build_file_name_and_class_name
+        AnchorMigrations::RailsLoader.load_rails!
+      else
+        abort "Can't find dir #{anchor_migrations_dir} or file #{Dir["#{anchor_migrations_dir}/*.sql"]}"
+      end
     end
 
-    # TODO: handle missing migrations dir
-    # handle missing migration file
     def generate(write_file: true)
-      # TODO: add more operation types
-      # - create index
-      # - drop index
-      return unless @sql_ddl =~ /create index|drop index/i
-
-      output_file = "#{migrations_dir}/#{@migration_version}_#{@migration_file_suffix}.rb"
+      output_file = "#{AnchorMigrations::RAILS_MIG_DIR}/#{@migration_version}_#{@migration_file_name_no_version}"
       migration_content = rails_generate_migration_code
       if write_file
         File.write(output_file, migration_content)
         puts "Wrote file: #{output_file}"
         puts File.read(output_file)
       end
-      migration_content
+      migration_content # for tests
     end
 
     private
-
-    def migrations_dir
-      subdirs = %w[db migrate]
-      File.join(subdirs)
-    end
 
     def rails_version_major_minor
       if defined?(Rails) && defined?(Rails::VERSION)
@@ -47,69 +39,63 @@ module AnchorMigrations
         minor = Rails::VERSION::MINOR
         "#{major}.#{minor}"
       else
-        "X.Y" # can't load Rails
+        "X.Y" # can't load Rails, this is only for testing outside Rails
       end
     end
 
-    # Try and deduce the operation type
-    # TODO add more operation types
-    # NOTE: Using named capture groups
-    def parse_sql_ddl
-      # Replace inner \n with empty space
-      # Strip trailing \n
-      @sql_ddl = @sql_ddl.gsub("\n", " ").strip
-      # Case-insensitive regex with optional keywords
+    def build_file_name_and_class_name
+      # Strip out the Rails-style version number
+      @migration_version = File.basename(@anchor_migration_file).split("_").first
 
-      if @sql_ddl =~ /(?<ddl>create\s+index # "CREATE INDEX"
-        |drop\s+index)                      # "DROP INDEX"
-        \s+concurrently                     # required "concurrently"
-        \s+(if\s+not\s+exists|if\s+exists)  # "if not exists" or "if exists"
-        \s+(?<idx>\w+)                      # index name (non-whitespace)
-      /xi
-        @index_name = Regexp.last_match(:idx)
-        index_name_mig_name = @index_name.split("_").map(&:capitalize).join
-        ddl_type = Regexp.last_match(:ddl)
-        ddl_type_mig_name = ddl_type.split.map(&:capitalize).join
-        ddl_type_file_name = ddl_type.split.map(&:downcase).join("_")
-        @migration_file_suffix = "#{ddl_type_file_name}_#{@index_name}"
-        @migration_name = "#{ddl_type_mig_name}#{index_name_mig_name}"
-      end
+      # Break up by underscore, and join together with underscore, for only the basename
+      path = File.basename(@anchor_migration_file)
+                 .split("_")[1..-1].join("_")
+
+      # Strip out the extension (.sql)
+      filename_base = File.basename(path, File.extname(path))
+
+      # Create a capitalized words version for the migration class name
+      @migration_class_name = filename_base.split("_")
+                                           .map(&:capitalize).join
+
+      # Create a filename with .rb extension
+      @migration_file_name_no_version = "#{filename_base}.rb"
     end
 
-    def change_method_content
+    def migration_change_method_body
       if AnchorMigrations.configuration.use_strong_migrations
         <<-TEMPL
         safety_assured do
           execute <<-SQL
-            #{@sql_ddl}
+            #{@cleaned_sql_ddl}
           SQL
         end
         TEMPL
       else
         <<-TEMPL
         execute <<-SQL
-          #{@sql_ddl}
+          #{@cleaned_sql_ddl}
         SQL
         TEMPL
       end
     end
 
     # Assume it's a concurrently operation for now, disable_ddl_transaction!
-    # TODO: support strong_migrations
     def rails_generate_migration_code
       <<~MIG_TEMPLATE.strip
         #
         # ################################################
         # DO NOT EDIT, generated by Anchor Migrations
         # Version: #{@migration_version}
-        # File: #{@anchor_migration_file}
+        # Source File: #{@anchor_migration_file}
+        # Target File: #{AnchorMigrations::RAILS_MIG_DIR}/#{@migration_version}_#{@migration_file_name_no_version}
         # ################################################
         #
-        class #{@migration_name} < ActiveRecord::Migration[#{rails_version_major_minor}]
+        class #{@migration_class_name} < ActiveRecord::Migration[#{rails_version_major_minor}]
           disable_ddl_transaction!
 
           def change
-            #{change_method_content}
+            #{migration_change_method_body}
           end
         end
       MIG_TEMPLATE

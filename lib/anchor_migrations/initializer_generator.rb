@@ -6,11 +6,11 @@ module AnchorMigrations
     def generate
       filename = "anchor_migrations.rb"
       file = "config/initializers/#{filename}"
-      if !File.exist?(file)
-        File.write(file, initalizer_template)
-        puts "Wrote file: #{file}"
-        puts File.read(file)
-      end
+      return if File.exist?(file)
+
+      File.write(file, initalizer_template)
+      puts "Wrote file: #{file}"
+      puts File.read(file)
     end
 
     def initalizer_template

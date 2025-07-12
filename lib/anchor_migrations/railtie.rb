@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "rails/railtie"
+require "rails/railtie" if defined?(Rails)
 
 module AnchorMigrations
   # Rails integration

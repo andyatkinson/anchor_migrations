@@ -62,7 +62,7 @@ module AnchorMigrations
     end
 
     def lint
-      if !Dir.exist?(AnchorMigrations::DEFAULT_DIR)
+      unless Dir.exist?(AnchorMigrations::DEFAULT_DIR)
         abort "Error: '#{AnchorMigrations::DEFAULT_DIR}' not found. Did you run anchor init?"
       end
       check_for_squawk
@@ -117,8 +117,8 @@ module AnchorMigrations
     def check_for_squawk
       if !system("which squawk > /dev/null 2>&1")
         abort <<~MSG
-        "Error: 'squawk' command not found in PATH."
-        Is it installed? https://squawkhq.com/docs/
+          "Error: 'squawk' command not found in PATH."
+          Is it installed? https://squawkhq.com/docs/
         MSG
       else
         puts "Squawk found."
