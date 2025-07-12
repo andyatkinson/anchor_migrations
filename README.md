@@ -1,73 +1,77 @@
 # ⚓ Anchor Migrations
-Anchor Migrations are SQL DDL, non-blocking, idempotent, and augment the normal ORM migrations process.
+Anchor Migrations are SQL DDL changes, safety-linted (non-blocking), idempotent, intended to augment and speed up DDL changes limited by ORM migrations.
+
+Anchor Migrations generate Active Record ORM migrations. They're both specific files, and a "workflow."
 
 ## Commands
 ```sh
 anchor init         # initialize directories
-anchor generate     # generate an empty versioned .sql file, to be filled in
-anchor lint         # safety-lint all .sql files using Squawk
-anchor backfill     # Backfill a Rails migration from the SQL
-anchor migrate      # Run the Anchor Migration DDL
+anchor generate     # generate empty versioned .sql file, to be filled in
+anchor lint         # safety-lint .sql files using Squawk
+anchor backfill     # Create Active Record migration from SQL
+anchor migrate      # Apply the Anchor Migration DDL
 ```
 
 ## Installation
-Add `anchor_migrations` to your `development` group Gemfile
+Add `anchor_migrations` to your `development` and `test` Gemfile groups:
 ```rb
-group :development do
+group :development, :test do
   gem 'anchor_migrations'
 end
 ```
 Then run `bundle install`.
 
 ## Preconditions
-Anchor Migrations are restricted and opinionated for now, expecting a few things:
-- Postgres only, 13+
-- `DATABASE_URL` environment variable is set to the database to migrate (e.g. production), and is reachable, in order to apply migrations
+Anchor Migrations have a restricted workflow for now (may get more flexible) and expect a few things:
+- Postgres only, 13+ (minimum for `DROP INDEX CONCURRENTLY`)
+- `DATABASE_URL` environment variable set to target database (e.g. production), and is reachable
 - `psql` client accessible in PATH
 - [Squawk](https://squawkhq.com) executable ([Quick Start documentation](https://squawkhq.com/docs/)) accessible in PATH
 
 ## Safety linting and lock_timeout
-Squawk is used on SQL migrations to check for unsafe operations. For example, creating an index or dropping an index without using CONCURRENTLY is detected by Squak. Anchor Migrations will require safety-linted SQL, although right now it’s up to the developer to run `anchor lint` in their workflow.
+Squawk is used on SQL migration files to check for unsafe operations. For example, creating or dropping an index without the `CONCURRENTLY` keyword is unsafe, and is detected by Squawk.
 
-When Anchor Migration SQL is ready to apply, a psql client connection is used for that. By default a 2 second `lock_timeout`[^docs] is set.
+Anchor Migrations require safety-linted SQL, although right now it's up to the developer to run `anchor lint` in their workflow and make it clear they did in their PR.
+
+Anchor Migration SQL is what's applied by running `anchor migrate`, and this requires a psql client. By default a 2 second `lock_timeout`[^docs] is set.
 
 ## What problems do Anchor migrations solve?
-1. Anchor Migrations are an additional mechanism to release safe DDL changes that don’t have code dependencies, while keeping all databases in sync using ORM migrations.
-
-Anchor Migrations are a process for organizations not using Trunk Based Development[^tbd] or frequent releases, to allow safe DDL to get released more frequently.
-
-Because Anchor Migrations generate the ORM (Active Record) migration *from* the SQL, Rails migrations stay in sync.
+Anchor Migrations are a process for organizations not using Trunk Based Development[^tbd] or that have infrequent releases. Instead of being limited to Active Record Migrations,
+Anchor Migrations are used to perform DDL without code dependencies, more frequently, then Rails Migrations are used to keep the schema state in sync.
 
 ## Example Anchor Migration SQL
-By default, Anchor Migrations are stored in `db/anchor_migrations` as `.sql` files:
+Anchor Migrations are stored in `db/anchor_migrations` as `.sql` files. For example:
 ```sql
--- anchor_migrations/20250623173850_create_index_tbl_col.sql
+-- db/anchor_migrations/20250623173850_create_index_tbl_col.sql
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
 idx_trips_created_at ON trips (created_at);
 ```
 
-Squawk runs on the SQL file above for "safety linting", looking for unsafe patterns.
+Squawk runs on the SQL file above to perform "safety linting," looking for unsafe patterns.
 
-Run it using anchor migrations with the `lint` command:
+Run it using the `lint` command:
 ```sh
-~/app ➜ bundle exec anchor lint
+➜ bundle exec anchor lint
 
 Found 0 issues in 1 file 🎉
 ```
 
-## Example ORM (Active Record) Migration
-This Rails migration was generated from the Anchor Migration SQL file above.
+If Squawk finds issues, apply the fixes and run it again until there are none.
 
-For this example, Strong Migrations is used, so the `safety_assured` block it expects is added to the Rails migration.
+## Example Active Record ORM Migration
+This Rails migration was generated from the Anchor Migration SQL above.
+
+Strong Migrations is used, so the `safety_assured` block it expects is added to the Rails migration. This is a configurable option.
 ```rb
 #
 # ################################################
 # DO NOT EDIT, generated by Anchor Migrations
 # Version: 20250623173850
-# File: anchor_migrations/20250623173850_anchor_migration.sql
+# Source File: db/anchor_migrations/20250623173850_create_index_trips_created_at.sql
+# Target File: db/migrate/20250623173850_create_index_trips_created_at.rb
 # ################################################
 #
-class CreateIndexIdxTripsCreatedAt < ActiveRecord::Migration[7.2]
+class CreateIndexTripsCreatedAt < ActiveRecord::Migration[7.2]
   disable_ddl_transaction!
 
   def change
@@ -81,8 +85,6 @@ end
 ```
 
 ## Configuration
-Currently, limited configuration is supported.
-
 Anchor Migrations supports generating Strong Migrations-compatible Active Record migrations:
 ```rb
 # config/initializers/anchor_migrations.rb
@@ -93,78 +95,60 @@ end
 
 ## Example PR Workflow
 For a PR, add:
-1. The Anchor Migration SQL file.
-1. The normal Rails migration files: Run `db:migrate` like normal to apply the migration. The developer submits the migration file and the diff to `db/structure.sql` or `db/schema.rb` like they normally would.
-1. Get an "approval" describing your plans to run `bundle exec anchor migrate`. The approval can be a comment in the PR from a team member.
-1. With an approval, run `anchor migrate` and capture the output (see below). Once applied, move the SQL migration into `db/anchor_migrations/applied` and update your PR.
-1. Get PR approval and merge it in. The Rails migration "backfills" the DDL, applying it wherever it's needed.
+1. Generate the Anchor Migration SQL file using `anchor generate`. It's important to customize the name since it will be used in the Rails Migration class name and file name! Fill in the SQL DDL. Make sure it's idempotent.
+1. Lint the SQL file using `anchor lint`
+1. Backfill the Active Record Migration by running `anchor backfill`. You will need to re-format the Ruby code (`rubocop -a`) as it may be correct, but poorly formatted.
+1. Apply the Rails migration like normal: `rails db:migrate`. Include the migration and the changes to `db/structure.sql` or `db/schema.rb` in your PR.
+1. You're ready for review. Get an "approval" describing your plan to apply the Anchor Migration. The approval can be a comment in the PR from a team member.
+1. With an approval, run `anchor migrate`. Capture the output for the PR. Verify the changes were applied. Once verified, move the SQL migration into `db/anchor_migrations/applied` and update your PR.
+1. With that, you're all done. Get a PR approval and merge it in.
 
-Example output of `bundle exec anchor migrate`:
-```
-Applying Version: 20250623173850
-CREATE INDEX CONCURRENTLY IF NOT EXISTS
-idx_trips_created_at ON trips (created_at);
-STDOUT:
-CREATE INDEX
-STDERR:
-Success!
-Applied Version: 20250623173850
-Exit code: 0
-```
-The idempotent Rails migration applies anywhere it's needed and the Rails app is deployed. Other developer databases, lower environments, CI, etc. When it reaches production, the Anchor Migration SQL DDL was already applied, so nothing happens. The Rails migration is idempotent.
+The Rails migration "backfills" the DDL for any database where it hasn't already applied. That will be local, CI, etc. but in production it won't apply since it already exists.
 
 ## Good uses of Anchor Migrations
 ### Query support, data integrity, data quality
-Indexes (and eventually constraints) that support query performance or data integrity, but have no code dependencies, can be changed at a faster cadence, while keeping everything consistent.
+Indexes and constraints that support query performance or data integrity, don't have code dependencies, can now be added, removed and replaced at a faster cadence, while keeping everything consistent.
 
-Indexes and constraints improve performance and data quality, and arguably shouldn’t be "blocked" by needing to wait for ORM migrations.
+Indexes and constraints improve performance and data quality, and arguably shouldn’t be "blocked" by a slow release process that constrains DDL changes.
 
 ### Long running DDL changes
-On large tables, creating indexes concurrently can take a long time. It's nice to perform that during a low activity period, requiring control over the timing, which isn't always possible with ORM migrations.
+On large tables, creating indexes concurrently can take a long time. It's nice to perform that during a low activity period, requiring control over the exact timing, possibly retries, monitoring.
+
+This isn't ideal for ORM migrations and deploys. However, Anchor Migrations are a good fit for this.
 
 ## Anchor Migrations Properties
 ### Idempotent
-Anchor Migrations in SQL must be written using idempotent tactics like `IF NOT EXISTS`.
+Anchor Migrations in SQL must be written using idempotent tactics like `IF NOT EXISTS` or by checking that a constraint exists already or doesn't.
 
-This allows the SQL to be the backfill source for an Active Record migration, which is then also idempotent.
+This allows the SQL to be the "source" for an Active Record migration, making it idempotent.
 
 ### Restricted DDL: What DDL is supported for Anchor Migrations?
 Only non-blocking, idempotent DDL is supported. This list is restricted heavily now although additional DDL types may be added in the future:
 1. `CREATE INDEX CONCURRENTLY IF NOT EXISTS`
 1. `DROP INDEX CONCURRENTLY IF EXISTS` (Postgres 13+)
+1. `ALTER TABLE ADD CONSTRAINT` when it's part of an anonymous block that checks for the existence of the constraint.
 
-Roadmap operations, future gem releases:
-1. `ALTER TABLE ALTER COLUMN IF NOT EXISTS` (only `NULL` values)
-1. Add check constraint, initially not valid
+### Requires psql
+For now, Anchor Migrations assumes you're using psql to apply migrations, and that psql can connect to your target database.
 
-### Uses psql
-For now, Anchor Migrations assumes you're using psql to migrate, and that psql can connect to your target instance.
-
-### What’s out of scope for Anchor Migrations?
+### What's out of scope for Anchor Migrations?
 Anchor Migrations are non-blocking and idempotent.
 
-For destructive operations like table drops, column drops, etc. with code dependencies, Anchor Migrations are not appropriate.
+For destructive operations like table drops, column drops, or migrations with code dependencies, Anchor Migrations should not be used.
 
-That's because application code references need to be removed first.
+Remove application code references first, before making schema changes.
 
 Use Strong Migrations or similar to help guide that process, and use regular Rails migrations.
 
 Some of those destructive operations are:
 1. `DROP TABLE`
-1. Adding non-nullable column, or a column with a default value
+1. Adding a non-nullable column, or a column with a default value
 1. Dropping constraints
 1. Adding initially valid constraints
-1. Add indexes without using concurrently
+1. Add or dropping indexes without the CONCURRENTLY keyword
 
 [^docs]: <https://www.postgresql.org/docs/current/runtime-config-client.html>
 [^tbd]: <https://trunkbaseddevelopment.com>
-
-## Building and Testing
-```sh
-gem build anchor_migrations.gemspec
-gem install ./anchor_migrations-0.1.0.gem
-bundle exec rake test
-```
 
 ## Testing Integration in Rails
 Add to the project's Gemfile, then run `bundle`.
@@ -172,4 +156,12 @@ Add to the project's Gemfile, then run `bundle`.
 Once installed, test that it works by running:
 ```sh
 bundle exec anchor help
+```
+
+## Building, Testing, Publishing
+```sh
+gem build anchor_migrations.gemspec
+gem install ./anchor_migrations-0.1.0.gem
+bundle exec rake test
+gem push anchor_migrations-0.1.0.gem
 ```
